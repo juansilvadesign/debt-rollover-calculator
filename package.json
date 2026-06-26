@@ -1,0 +1,16 @@
+{
+  "name": "debt-rollover-calculator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Astro page for calculating how long a debt rollover stays under an available credit limit.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "astro": "^7.0.0"
+  }
+}
