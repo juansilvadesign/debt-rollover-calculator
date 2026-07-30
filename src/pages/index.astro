@@ -192,33 +192,44 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
           <p data-result="formula">Fórmula direta: {initial.directFormulaMonths}</p>
         </div>
 
-        <div class="table-wrap">
-          <table>
-            <caption>Projeção de rolagem mensal com o primeiro mês reprovado</caption>
-            <thead>
-              <tr>
-                <th>Mês</th>
-                <th>Dívida projetada</th>
-                <th>Limite sobrante</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="monthRows">
-              {
-                initial.rows.map((row) => (
-                  <tr class={`is-${row.status}`}>
-                    <td data-label="Mês">{row.month}</td>
-                    <td data-label="Dívida projetada">{formatBRL(row.displayDebt)}</td>
-                    <td data-label="Limite sobrante">{formatBRL(row.remainingLimit)}</td>
-                    <td data-label="Status">
-                      <span>{row.status === 'success' ? 'Passou' : 'Estourou'}</span>
-                    </td>
-                  </tr>
-                ))
-              }
-            </tbody>
-          </table>
-        </div>
+        <details class="table-disclosure" id="tableDisclosure" open>
+          <summary class="table-summary">Ver tabela detalhada</summary>
+          <div class="table-wrap">
+            <table>
+              <caption>Projeção de rolagem mensal com o primeiro mês reprovado</caption>
+              <thead>
+                <tr>
+                  <th>Mês</th>
+                  <th>Dívida projetada</th>
+                  <th>Limite sobrante</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="monthRows">
+                {
+                  initial.rows.map((row) => (
+                    <tr class={`is-${row.status}`}>
+                      <td data-label="Mês">{row.month}</td>
+                      <td data-label="Dívida projetada">{formatBRL(row.displayDebt)}</td>
+                      <td data-label="Limite sobrante">{formatBRL(row.remainingLimit)}</td>
+                      <td data-label="Status">
+                        <span>{row.status === 'success' ? 'Passou' : 'Estourou'}</span>
+                      </td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+        </details>
+        <script is:inline>
+          (() => {
+            const disclosure = document.getElementById('tableDisclosure');
+            if (disclosure) {
+              disclosure.open = !window.matchMedia('(max-width: 759px)').matches;
+            }
+          })();
+        </script>
       </div>
     </section>
 
@@ -426,5 +437,14 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
 
     themeToggle?.addEventListener('click', toggleTheme);
     setThemeButtonState();
+
+    const tableDisclosure = document.querySelector('#tableDisclosure');
+    const compactTable = window.matchMedia('(max-width: 759px)');
+
+    function syncTableDisclosure(query) {
+      if (tableDisclosure) tableDisclosure.open = !query.matches;
+    }
+
+    compactTable.addEventListener('change', syncTableDisclosure);
   </script>
 </BaseLayout>
