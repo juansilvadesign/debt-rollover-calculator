@@ -537,6 +537,21 @@ a:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+.preview-note {
+  margin: 14px 0 0;
+  border-left: 3px solid var(--warning);
+  padding: 9px 12px;
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  color: var(--muted-strong);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.preview-note[hidden] {
+  display: none;
+}
+
 .timeline {
   display: grid;
   gap: 10px;

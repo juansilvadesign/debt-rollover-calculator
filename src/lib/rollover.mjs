@@ -1,5 +1,10 @@
 export const INSUFFICIENT_LIMIT_MESSAGE = 'Limite insuficiente para realizar a primeira operação';
 export const INVALID_INPUT_MESSAGE = 'Preencha dívida, limite e CET com valores maiores que zero.';
+export const UNSUPPORTED_HORIZON_MESSAGE = 'O horizonte calculado é longo demais para ser representado com segurança.';
+export const DEFAULT_MAX_PREVIEW_ROWS = 360;
+
+const BOUNDARY_TOLERANCE_FACTOR = 16;
+const MAX_SUPPORTED_MONTHS = Number.MAX_SAFE_INTEGER - 1;
 
 const MONEY_FORMATTER = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
@@ -33,11 +38,79 @@ function toPositiveNumber(value) {
   return Number.isFinite(number) ? number : 0;
 }
 
+function normalizeMaxRows(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return DEFAULT_MAX_PREVIEW_ROWS;
+  return Math.max(1, Math.floor(number));
+}
+
+function isWithinLimit(projectedDebt, limit) {
+  if (!Number.isFinite(projectedDebt)) return false;
+  if (projectedDebt <= limit) return true;
+
+  const scale = Math.max(1, Math.abs(projectedDebt), Math.abs(limit));
+  const tolerance = Number.EPSILON * scale * BOUNDARY_TOLERANCE_FACTOR;
+  return projectedDebt - limit <= tolerance;
+}
+
+function projectDebt(debt, logGrowth, month) {
+  if (month === 0) return debt;
+  return debt * Math.exp(logGrowth * month);
+}
+
+function makeRow({ debt, limit, logGrowth, month, maxSuccessfulMonths }) {
+  const rawDebt = projectDebt(debt, logGrowth, month);
+  const displayDebt = floorToCents(rawDebt);
+
+  return {
+    month,
+    rawDebt,
+    displayDebt,
+    remainingLimit: floorToCents(limit - displayDebt),
+    status: month <= maxSuccessfulMonths ? 'success' : 'failed',
+  };
+}
+
+function calculateWholeMonths(debt, limit, logGrowth) {
+  if (debt === limit) return 0;
+
+  const headroomRatio = (limit - debt) / debt;
+  const formulaResult = Math.log1p(headroomRatio) / logGrowth;
+
+  if (!Number.isFinite(formulaResult) || formulaResult > MAX_SUPPORTED_MONTHS) {
+    return null;
+  }
+
+  const nearestInteger = Math.round(formulaResult);
+  const integerTolerance = Number.EPSILON
+    * Math.max(1, Math.abs(formulaResult))
+    * BOUNDARY_TOLERANCE_FACTOR;
+  let wholeMonths = Math.abs(formulaResult - nearestInteger) <= integerTolerance
+    ? nearestInteger
+    : Math.floor(formulaResult);
+
+  // The logarithmic formula supplies the efficient long-horizon answer. These
+  // adjacent checks reconcile its rounding with the same full-precision debt
+  // projection used for rows, especially when a month lands on the limit.
+  while (wholeMonths > 0 && !isWithinLimit(projectDebt(debt, logGrowth, wholeMonths), limit)) {
+    wholeMonths -= 1;
+  }
+
+  while (
+    wholeMonths < MAX_SUPPORTED_MONTHS
+    && isWithinLimit(projectDebt(debt, logGrowth, wholeMonths + 1), limit)
+  ) {
+    wholeMonths += 1;
+  }
+
+  return wholeMonths;
+}
+
 export function calculateRollover(input, options = {}) {
-  const debt = toPositiveNumber(input.debt);
-  const limit = toPositiveNumber(input.limit);
-  const monthlyCetPercent = toPositiveNumber(input.monthlyCetPercent);
-  const maxRows = Math.max(1, Math.round(options.maxRows ?? 360));
+  const debt = toPositiveNumber(input?.debt);
+  const limit = toPositiveNumber(input?.limit);
+  const monthlyCetPercent = toPositiveNumber(input?.monthlyCetPercent);
+  const maxRows = normalizeMaxRows(options.maxRows ?? DEFAULT_MAX_PREVIEW_ROWS);
 
   if (debt <= 0 || limit <= 0 || monthlyCetPercent <= 0) {
     return {
@@ -60,35 +133,49 @@ export function calculateRollover(input, options = {}) {
   }
 
   const monthlyRate = monthlyCetPercent / 100;
-  let projectedDebt = debt;
-  const rows = [];
-  let maxSuccessfulMonths = 0;
-  let lastSuccessfulDisplayDebt = floorToCents(debt);
+  const logGrowth = Math.log1p(monthlyRate);
 
-  for (let month = 1; month <= maxRows; month += 1) {
-    const rawDebt = projectedDebt * (1 + monthlyRate);
-    const displayDebt = floorToCents(rawDebt);
-    const isSuccessful = rawDebt <= limit + Number.EPSILON;
-
-    rows.push({
-      month,
-      rawDebt,
-      displayDebt,
-      remainingLimit: floorToCents(limit - displayDebt),
-      status: isSuccessful ? 'success' : 'failed',
-    });
-
-    if (!isSuccessful) break;
-
-    maxSuccessfulMonths = month;
-    lastSuccessfulDisplayDebt = displayDebt;
-    projectedDebt = rawDebt;
+  if (!Number.isFinite(logGrowth) || logGrowth <= 0) {
+    return {
+      ok: false,
+      reason: 'invalid-input',
+      message: INVALID_INPUT_MESSAGE,
+      rows: [],
+      input: { debt, limit, monthlyCetPercent },
+    };
   }
 
-  const directFormulaMonths = Math.max(
-    0,
-    Math.floor(Math.log(limit / debt) / Math.log(1 + monthlyRate)),
-  );
+  const maxSuccessfulMonths = calculateWholeMonths(debt, limit, logGrowth);
+
+  if (maxSuccessfulMonths === null) {
+    return {
+      ok: false,
+      reason: 'unsupported-horizon',
+      message: UNSUPPORTED_HORIZON_MESSAGE,
+      rows: [],
+      input: { debt, limit, monthlyCetPercent },
+    };
+  }
+
+  const firstFailedMonthNumber = maxSuccessfulMonths + 1;
+  const previewEndMonth = Math.min(maxRows, firstFailedMonthNumber);
+  const rows = Array.from({ length: previewEndMonth }, (_, index) => makeRow({
+    debt,
+    limit,
+    logGrowth,
+    month: index + 1,
+    maxSuccessfulMonths,
+  }));
+  const nextFailedMonth = makeRow({
+    debt,
+    limit,
+    logGrowth,
+    month: firstFailedMonthNumber,
+    maxSuccessfulMonths,
+  });
+  const includesFirstFailure = previewEndMonth === firstFailedMonthNumber;
+  const truncated = !includesFirstFailure;
+  const finalDebt = floorToCents(projectDebt(debt, logGrowth, maxSuccessfulMonths));
 
   return {
     ok: true,
@@ -96,10 +183,16 @@ export function calculateRollover(input, options = {}) {
     monthlyRate,
     rows,
     maxSuccessfulMonths,
-    directFormulaMonths,
-    finalDebt: lastSuccessfulDisplayDebt,
-    remainingLimit: floorToCents(limit - lastSuccessfulDisplayDebt),
-    nextFailedMonth: rows.find((row) => row.status === 'failed') ?? null,
-    truncated: rows.length === maxRows && rows.at(-1)?.status === 'success',
+    directFormulaMonths: maxSuccessfulMonths,
+    finalDebt,
+    remainingLimit: floorToCents(limit - finalDebt),
+    nextFailedMonth,
+    truncated,
+    preview: {
+      maxRows,
+      shownThroughMonth: previewEndMonth,
+      includesFirstFailure,
+      truncated,
+    },
   };
 }

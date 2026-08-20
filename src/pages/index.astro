@@ -60,7 +60,7 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
           {
             initialFailed
               ? `Mês ${initialFailed.month} falha com ${formatBRL(initialFailed.displayDebt)}.`
-              : 'Nenhum mês falhou no limite de simulação.'
+              : 'A projeção completa não encontrou um mês de falha.'
           }
         </div>
       </div>
@@ -167,6 +167,8 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
           <strong data-result="limit">{formatBRL(defaults.limit)}</strong>
         </div>
 
+        <p class="preview-note" data-result="previewNotice" hidden></p>
+
         <div class="timeline" id="timeline">
           {
             initial.rows.map((row) => (
@@ -187,16 +189,18 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
         <div class="section-heading">
           <div>
             <p class="eyebrow">Tabela</p>
-            <h2>Meses aprovados e reprovado</h2>
+            <h2>Projeção detalhada</h2>
           </div>
-          <p data-result="formula">Fórmula direta: {initial.directFormulaMonths}</p>
+          <p data-result="formula">Fórmula direta: {initial.directFormulaMonths} meses</p>
         </div>
+
+        <p class="preview-note" data-result="previewNotice" hidden></p>
 
         <details class="table-disclosure" id="tableDisclosure" open>
           <summary class="table-summary">Ver tabela detalhada</summary>
           <div class="table-wrap">
             <table>
-              <caption>Projeção de rolagem mensal com o primeiro mês reprovado</caption>
+              <caption data-result="tableCaption">Projeção de rolagem mensal com o primeiro mês reprovado</caption>
               <thead>
                 <tr>
                   <th>Mês</th>
@@ -272,6 +276,8 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
       limit: document.querySelector('[data-result="limit"]'),
       cet: document.querySelector('[data-result="cet"]'),
       insight: document.querySelector('[data-result="insight"]'),
+      previewNotice: document.querySelectorAll('[data-result="previewNotice"]'),
+      tableCaption: document.querySelector('[data-result="tableCaption"]'),
     };
 
     function valueFrom(input) {
@@ -287,6 +293,12 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
         return;
       }
       el.textContent = value;
+    }
+
+    function setHidden(elements, hidden) {
+      elements?.forEach((element) => {
+        element.hidden = hidden;
+      });
     }
 
     function setThemeButtonState() {
@@ -339,6 +351,9 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
       setText(resultEls.limit, formatBRL(result.input.limit));
       setText(resultEls.cet, formatPercent(result.input.monthlyCetPercent));
       setText(resultEls.insight, result.message);
+      setText(resultEls.previewNotice, '');
+      setText(resultEls.tableCaption, 'Nenhuma projeção disponível para os dados informados');
+      setHidden(resultEls.previewNotice, true);
       if (timeline) timeline.innerHTML = '';
       if (monthRows) monthRows.innerHTML = '';
     }
@@ -381,8 +396,13 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
       const failed = result.nextFailedMonth;
       if (!failed) {
         setText(resultEls.failedMonth, '—');
-        setText(resultEls.failedDebt, 'sem falha');
-        setText(resultEls.insight, 'Nenhum mês falhou no limite de simulação.');
+        setText(resultEls.failedDebt, result.truncated ? 'fora da prévia' : 'sem falha');
+        setText(
+          resultEls.insight,
+          result.truncated
+            ? `A prévia termina no mês ${result.preview.shownThroughMonth} sem incluir a primeira falha.`
+            : 'A projeção completa não encontrou um mês de falha.'
+        );
         return;
       }
 
@@ -390,8 +410,27 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
       setText(resultEls.failedDebt, formatBRL(failed.displayDebt));
       setText(
         resultEls.insight,
-        `Mês ${failed.month} estoura o limite em ${formatBRL(Math.abs(failed.remainingLimit))}.`
+        result.truncated
+          ? `Mês ${failed.month} estoura o limite em ${formatBRL(Math.abs(failed.remainingLimit))}. A prévia abaixo vai até o mês ${result.preview.shownThroughMonth}.`
+          : `Mês ${failed.month} estoura o limite em ${formatBRL(Math.abs(failed.remainingLimit))}.`
       );
+    }
+
+    function renderPreviewState(result) {
+      if (!result.truncated) {
+        setText(resultEls.previewNotice, '');
+        setText(resultEls.tableCaption, 'Projeção de rolagem mensal com o primeiro mês reprovado');
+        setHidden(resultEls.previewNotice, true);
+        return;
+      }
+
+      const message = `Prévia limitada aos primeiros ${result.preview.shownThroughMonth} meses. O cálculo completo tem ${result.maxSuccessfulMonths} meses viáveis e falha no mês ${result.nextFailedMonth.month}.`;
+      setText(resultEls.previewNotice, message);
+      setText(
+        resultEls.tableCaption,
+        `Primeiros ${result.preview.shownThroughMonth} meses da projeção; a primeira falha ocorre no mês ${result.nextFailedMonth.month} e não aparece nesta prévia`
+      );
+      setHidden(resultEls.previewNotice, false);
     }
 
     function render() {
@@ -411,10 +450,11 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
       setText(resultEls.months, String(result.maxSuccessfulMonths));
       setText(resultEls.finalDebt, formatBRL(result.finalDebt));
       setText(resultEls.remainingLimit, formatBRL(result.remainingLimit));
-      setText(resultEls.formula, `Fórmula direta: ${result.directFormulaMonths}`);
+      setText(resultEls.formula, `Fórmula direta: ${result.directFormulaMonths} meses`);
       setText(resultEls.limit, formatBRL(input.limit));
       setText(resultEls.cet, formatPercent(input.monthlyCetPercent));
       renderInsight(result);
+      renderPreviewState(result);
       renderTimeline(result.rows, input.limit);
       renderTable(result.rows);
     }
