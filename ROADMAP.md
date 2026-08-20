@@ -16,18 +16,18 @@ actionable checklist is **[`TASKS.md`](TASKS.md)**.
 
 ## Frame: fix trust first, flex everything else
 
-The MVP is already built. The next increment is time-boxed to **one focused
-maintenance increment** with **one maintainer and the existing static Astro
-stack**. If the whole candidate scope does not fit, correctness and honest
-result wording stay; optional polish moves. Later milestones receive a fixed
-time-box only after the preceding retrospective.
+The MVP and its boundary-safety increment are built. The next increment remains
+limited to **one focused release decision** with **one maintainer and the
+existing static Astro stack**. Milestone D starts by choosing a public or
+local/private home; its release scope and time-box follow that choice. Later
+work receives a fixed time-box only after the preceding retrospective.
 
 | Fixed for the next increment | Open to change |
 | --- | --- |
-| Outcome: a boundary-safe, honestly bounded answer | Exact implementation of the arithmetic |
+| Outcome: one declared, reliably reachable home | Public web or local/private utility |
 | Capacity: one maintainer; no backend or operations layer | Number of extra edge cases and UI refinements |
 | Architecture: static page plus locally testable calculation module | Whether the project is eventually public or local-only |
-| Release gate: reference case + boundary regressions + production build | Every feature beyond the three-input fixed-CET model |
+| Release gate: no placeholder identity + repeatable access path | Every feature beyond the three-input fixed-CET model |
 
 There is no external calendar launch commitment. D and E therefore remain
 coarse rather than pretending to predict dates that have not been chosen.
@@ -49,11 +49,10 @@ The model has four load-bearing rules:
 4. Currency precision and the rendered table limit must never silently change
    the answer.
 
-The first three are implemented. The fourth is now the active risk: the code
-carries full floating-point precision while truncating displayed currency, uses
-an absolute `Number.EPSILON` boundary, and stops rendering after 360 rows. Those
-are reasonable implementation choices only if their behavior is explicit and
-correct at the edges.
+All four are now implemented with an explicit contract: calculations retain
+full internal precision, the exact-limit comparison uses a magnitude-scaled
+rounding tolerance, displayed currency is truncated to cents, and the true
+horizon is independent of the 360-row detailed preview.
 
 ---
 
@@ -65,8 +64,8 @@ correct at the edges.
 | --- | --- | --- | --- |
 | **A** | Turn the supplied rollover rule into a testable answer | ✅ | `9028f32`; supplied 6% case passes |
 | **B** | Make the stopping point understandable on one static page | ✅ | `9028f32`; local test + production build re-verified 2026-07-30 |
-| **C** | Make boundary and long-horizon answers trustworthy | ⬜ | Next increment; retires arithmetic and truncation risk |
-| **D** | Make the verified tool reachable in its intended context | ⬜ | Public-vs-local decision after C |
+| **C** | Make boundary and long-horizon answers trustworthy | ✅ | Expanded regressions, static build, and responsive Chrome checks passed 2026-08-20 |
+| **D** | Make the verified tool reachable in its intended context | ⬜ | Next: choose public web or local/private utility |
 | **E** | Validate the model and interface through real use | ⬜ | Evidence decides whether another increment exists |
 
 The critical path is **A → B → C → D**. E supplies learning after the calculator
@@ -100,19 +99,19 @@ The page is static and the calculation has no runtime API dependency. The only
 runtime third-party request is the imported Google font, a distribution choice
 to revisit only if the intended home requires privacy or offline behavior.
 
-### C — Make boundary and long-horizon answers trustworthy ⬜
+### C — Make boundary and long-horizon answers trustworthy ✅
 
-This is the detailed next increment because a calculator is useful only when
-“fits” and “does not fit” remain correct at the boundary.
+This increment shipped because a calculator is useful only when “fits” and
+“does not fit” remain correct at the boundary.
 
 Two direct probes during the 2026-07-30 audit exposed the risk:
 
-| Probe | Correct interpretation | Current behavior |
+| Probe | Correct interpretation | Pre-C behavior found by the audit |
 | --- | --- | --- |
 | Debt `100`, limit `110`, CET `10%` | Month 1 lands on the limit and succeeds | Iteration returns `0`; formula returns `1` |
 | Debt `1,000`, limit `1,500`, CET `0.01%` | Failure occurs after the table preview | Iteration stops at `360`; formula returns `4,054`; UI can call `360` the maximum |
 
-The release sequence is:
+The shipped release sequence was:
 
 1. Capture exact-boundary, invalid-input, and long-horizon cases as regressions.
 2. Define the cent/precision rule, using the supplied table as the default source
@@ -130,15 +129,18 @@ lands exactly on the limit or the projection is longer than the rendered table.
 guard are sufficient without an explicit numeric contract.
 
 **Acceptance evidence:** the supplied six-month case is unchanged; exact-limit
-regressions pass; the iterative and direct counts agree or explain a documented
-difference; truncated previews never claim to be maxima; every visible result
-view agrees.
+regressions pass; the logarithmic count is reconciled against the adjacent raw
+debt projections; truncated previews never claim to be maxima; and every
+visible result view agrees. The unit suite and production build passed on
+2026-08-20. Chrome 149 smoke checks covered the reference, exact-boundary,
+insufficient-limit, invalid-input, and long-horizon cases at 320 × 800 and
+1280 × 900 with no horizontal overflow.
 
 ### D — Make the verified tool reachable in its intended context ⬜
 
-This milestone is intentionally coarse until C is reviewed. It delivers one
-benefit: the intended user can reliably reach the verified calculator where it
-is meant to live.
+This milestone starts with one explicit home decision. It delivers one benefit:
+the intended user can reliably reach the verified calculator where it is meant
+to live.
 
 There are two legitimate releases:
 

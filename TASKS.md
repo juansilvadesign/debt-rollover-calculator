@@ -4,13 +4,12 @@ The living checklist. Milestone definitions and the reasoning live in
 **[`ROADMAP.md`](ROADMAP.md)**; the current product description and reference
 case live in **[`README.md`](README.md)**.
 
-_Last reviewed: 2026-07-30_
+_Last reviewed: 2026-08-20_
 
-> Milestones **A–B** are shipped. The reference case passes and the static site
-> builds. **C is next** because the roadmap audit found two cases the current UI
-> can describe incorrectly: an amount that lands exactly on the limit, and a
-> projection that outlives the 360-row display cap. Publishing and feature work
-> wait until those answers are trustworthy.
+> Milestones **A–C** are shipped. The reference case passes, exact-limit
+> arithmetic is boundary-safe, the true horizon is independent of the 360-row
+> preview, and all detailed views label truncation. **D is next** and begins
+> with choosing whether this is a public web tool or a local/private utility.
 
 ---
 
@@ -48,50 +47,50 @@ _Last reviewed: 2026-07-30_
 
 ---
 
-## C — Make boundary math trustworthy ⬜
+## Completed — C: make boundary math trustworthy ✅
 
-This is the next increment. Fix the result contract before expanding or
-publishing the calculator.
+The result contract is fixed. Publishing and feature work can now wait on the
+Milestone D home decision rather than arithmetic risk.
 
 ### C1 — Turn the known failures into tests
 
-- [ ] Add an exact-boundary regression: `100` debt, `110` limit, and `10%` CET
-      must allow month 1 and fail in month 2. The current iterative result says
-      zero months while the direct formula says one.
-- [ ] Add a multi-month boundary regression: `100` debt, `121` limit, and `10%`
+- [x] Add an exact-boundary regression: `100` debt, `110` limit, and `10%` CET
+      must allow month 1 and fail in month 2. Before C, the iterative result
+      said zero months while the direct formula said one.
+- [x] Add a multi-month boundary regression: `100` debt, `121` limit, and `10%`
       CET must allow two whole months.
-- [ ] Add a long-horizon regression: `1,000` debt, `1,500` limit, and `0.01%`
+- [x] Add a long-horizon regression: `1,000` debt, `1,500` limit, and `0.01%`
       CET must not present the 360-row rendering cap as the true maximum. The
-      current direct formula returns 4,054 months.
-- [ ] Cover zero, negative, non-numeric, and non-finite inputs explicitly.
-- [ ] Cover `debt === limit`, failure in the first rollover month, and a
+      direct formula returns 4,054 months.
+- [x] Cover zero, negative, non-numeric, and non-finite inputs explicitly.
+- [x] Cover `debt === limit`, failure in the first rollover month, and a
       successful projection that reaches the configured row cap.
 
 ### C2 — Define and repair the calculation contract
 
-- [ ] Decide and document the money rule: carry full internal precision and
+- [x] Decide and document the money rule: carry full internal precision and
       truncate only for display, or apply a cent-level rule after every month.
       Preserve the supplied reference table unless a better source of truth
       deliberately replaces it.
-- [ ] Replace the absolute `Number.EPSILON` comparison with arithmetic that
+- [x] Replace the absolute `Number.EPSILON` comparison with arithmetic that
       handles cent-scale exact boundaries consistently.
-- [ ] Make the iterative result and logarithmic cross-check agree on boundary
-      cases, or surface a deliberate, documented reason when they cannot.
-- [ ] Separate the answer from the table cap: either calculate the true maximum
+- [x] Reconcile the logarithmic horizon against its adjacent full-precision
+      debt projections so boundary cases use one consistent answer.
+- [x] Separate the answer from the table cap: either calculate the true maximum
       while rendering a bounded preview, or label a capped result as “at least
       N months.” Never call a truncated preview the maximum.
-- [ ] Make the no-failure message distinguish “no failure exists” from “no
+- [x] Make the no-failure message distinguish “no failure exists” from “no
       failure was rendered inside the preview.”
 
 ### C3 — Verify the repaired release
 
-- [ ] Keep the original six-month reference case unchanged.
-- [ ] Run the expanded unit suite and a production build.
-- [ ] Smoke-test the reference, exact-boundary, insufficient-limit, invalid, and
+- [x] Keep the original six-month reference case unchanged.
+- [x] Run the expanded unit suite and a production build.
+- [x] Smoke-test the reference, exact-boundary, insufficient-limit, invalid, and
       long-horizon cases in the browser.
-- [ ] Check the result cards, timeline, and table at 320 px and desktop widths;
+- [x] Check the result cards, timeline, and table at 320 px and desktop widths;
       all three views must tell the same story.
-- [ ] Record the chosen money rule and the verification evidence in
+- [x] Record the chosen money rule and the verification evidence in
       [`README.md`](README.md).
 
 **C ships when:** a value exactly equal to the limit is treated consistently,
@@ -158,7 +157,7 @@ small.
 
 ## Housekeeping — safe to do alongside the active milestone ⬜
 
-- [ ] Link [`TASKS.md`](TASKS.md) and [`ROADMAP.md`](ROADMAP.md) from
+- [x] Link [`TASKS.md`](TASKS.md) and [`ROADMAP.md`](ROADMAP.md) from
       [`README.md`](README.md).
 - [ ] Keep the reference case in the README, tests, and UI synchronized if its
       source of truth changes.
@@ -175,3 +174,9 @@ small.
 - **2026-07-30** — Roadmap audit: current tests and production build pass.
   Milestone C opened after direct probes exposed the exact-limit floating-point
   mismatch and the misleading 360-row truncation state.
+- **2026-08-20** — Milestone C shipped. The calculator now uses a scaled
+  floating-point boundary tolerance, calculates the full logarithmic horizon
+  independently of its 360-row preview, and exposes the true failed month even
+  when it is not rendered. Expanded unit tests and the static build pass. Chrome
+  149 smoke tests passed all required scenarios at 320 × 800 and 1280 × 900
+  without horizontal overflow or disagreement between result views.
