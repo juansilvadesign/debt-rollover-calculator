@@ -4,15 +4,15 @@ The living checklist. Milestone definitions and the reasoning live in
 **[`ROADMAP.md`](ROADMAP.md)**; the current product description and reference
 case live in **[`README.md`](README.md)**.
 
-_Last reviewed: 2026-08-21_
+_Last reviewed: 2026-08-22_
 
 > Milestones **A–C** are shipped, with C independently re-verified on
 > 2026-08-21 (see [C4](#c4--re-verification-and-repair-2026-08-21)). The
 > reference case passes, exact-limit arithmetic is boundary-safe and now
 > matches an exact-rational oracle, the true horizon is independent of the
-> 360-row preview, and all detailed views label truncation. **D is next** and
-> begins with choosing whether this is a public web tool or a local/private
-> utility.
+> 360-row preview, and all detailed views label truncation. **D is active**:
+> this is a local/private utility, and its loopback start path is documented.
+> A hands-on check on the real-use device remains before D can ship.
 
 ---
 
@@ -142,8 +142,10 @@ Choose one branch after the C retrospective. A personal local utility and a
 public shareable tool have different completion criteria; the roadmap should not
 pretend both are required.
 
-- [ ] Decide whether the intended home is **public web** or **local/private
-      utility**, and record the reason.
+- [x] Decide whether the intended home is **public web** or **local/private
+      utility**, and record the reason. **Decision (2026-08-22):** local/private
+      utility; public hosting adds no value for this personal life-admin tool
+      and would introduce an unnecessary publication and operations surface.
 
 **Branch 1 — public web:**
 
@@ -160,12 +162,16 @@ pretend both are required.
 
 **Branch 2 — local/private utility:**
 
-- [ ] Remove or clearly document the placeholder `site` URL so generated output
-      cannot imply a deployment that does not exist.
-- [ ] Document the shortest supported local start path and the supported Node
-      version.
+- [x] Remove or clearly document the placeholder `site` URL so generated output
+      cannot imply a deployment that does not exist. The Astro `site` setting is
+      intentionally unset.
+- [x] Document the shortest supported local start path and the supported Node
+      version. `npm ci && npm start` serves `http://127.0.0.1:4321/` with Node
+      `>=22.12.0`.
 - [ ] Verify the calculator is usable from the device where the real scenarios
-      will be entered.
+      will be entered. The loopback server returned HTTP 200 in a local smoke
+      test on 2026-08-22, but this still needs a hands-on check on the intended
+      device.
 
 **D ships when:** the calculator has one declared home, no placeholder production
 identity, and a repeatable way to reach it there.
@@ -229,3 +235,10 @@ small.
   "estoura o limite em R$ 0,00", and a table heading that claimed "Fórmula
   direta" for a number the direct formula does not produce at the boundary.
   Suite 12 → 16 tests, all passing, production build clean.
+- **2026-08-22** — Milestone D started. The project is declared a local/private
+  personal utility: Astro no longer has the placeholder `example.com` site
+  identity, and `npm start` provides a repeatable loopback-only start path at
+  `http://127.0.0.1:4321/` on Node `>=22.12.0`. `npm ci --dry-run`, the unit
+  suite, the static build, and a loopback HTTP-200 smoke test all pass. The
+  remaining D gate is a hands-on check on the device where real scenarios will
+  be entered.

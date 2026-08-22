@@ -1,13 +1,29 @@
-# Debt Rollover Calculator Site
+# Debt Rollover Calculator
 
-Static Astro calculator for estimating how many full months a debt rollover can stay below an available credit-card limit.
+Local/private Astro utility for estimating how many full months a debt rollover can stay below an available credit-card limit. It has no public deployment or canonical production URL.
 
 Project tracking: [`ROADMAP.md`](ROADMAP.md) · [`TASKS.md`](TASKS.md)
 
-## Commands
+## Local use
+
+This calculator is meant to run on the same device where its scenarios are entered. Its supported start command binds only to `127.0.0.1`, so it is not exposed to the local network or the public internet.
+
+**Supported Node.js:** `>=22.12.0` (tested with `v22.23.2`).
+
+For the first run, from this project directory:
 
 ```bash
-npm install
+npm ci
+npm start
+```
+
+Then open [http://127.0.0.1:4321/](http://127.0.0.1:4321/) on that same device. Keep the terminal process running while using the calculator; press `Ctrl+C` to stop it.
+
+The calculation has no server or API call: entered values stay in the browser. The stylesheet currently requests the IBM Plex Sans font from Google Fonts when a network is available; it falls back to installed system fonts when it is not.
+
+## Development and verification
+
+```bash
 npm run test
 npm run build
 npm run dev

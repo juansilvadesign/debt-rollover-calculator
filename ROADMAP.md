@@ -58,14 +58,14 @@ horizon is independent of the 360-row detailed preview.
 
 ## Milestones
 
-`✅ shipped` · `⬜ open`
+`✅ shipped` · `🟡 active` · `⬜ open`
 
 | | Benefit-delivering milestone | State | Evidence / assumption retired |
 | --- | --- | --- | --- |
 | **A** | Turn the supplied rollover rule into a testable answer | ✅ | `9028f32`; supplied 6% case passes |
 | **B** | Make the stopping point understandable on one static page | ✅ | `9028f32`; local test + production build re-verified 2026-07-30 |
 | **C** | Make boundary and long-horizon answers trustworthy | ✅ | Expanded regressions, static build, and responsive Chrome checks passed 2026-08-20 |
-| **D** | Make the verified tool reachable in its intended context | ⬜ | Next: choose public web or local/private utility |
+| **D** | Make the verified tool reachable in its intended context | 🟡 | Local/private utility selected 2026-08-22; verify it on the real-use device |
 | **E** | Validate the model and interface through real use | ⬜ | Evidence decides whether another increment exists |
 
 The critical path is **A → B → C → D**. E supplies learning after the calculator
@@ -165,11 +165,16 @@ Measured at roughly 0.008% of realistic inputs (24 of 300,000). Removing it
 entirely would mean changing the money rule, which would break the supplied
 reference table — a deliberate decision left to a future increment.
 
-### D — Make the verified tool reachable in its intended context ⬜
+### D — Make the verified tool reachable in its intended context 🟡
 
 This milestone starts with one explicit home decision. It delivers one benefit:
 the intended user can reliably reach the verified calculator where it is meant
 to live.
+
+**Decision, 2026-08-22:** this is a local/private utility. A public URL would
+add publishing and operating surface without improving its personal life-admin
+use. Its supported home is a loopback local server on the device where scenarios
+are entered.
 
 There are two legitimate releases:
 
