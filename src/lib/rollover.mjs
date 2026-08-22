@@ -21,8 +21,10 @@ const NUMBER_FORMATTER = new Intl.NumberFormat('pt-BR', {
 export function floorToCents(value) {
   if (!Number.isFinite(value)) return 0;
   const scaled = value * 100;
-  if (scaled >= 0) return Math.floor(scaled + 1e-6) / 100;
-  return Math.ceil(scaled - 1e-6) / 100;
+  const cents = scaled >= 0 ? Math.floor(scaled + 1e-6) : Math.ceil(scaled - 1e-6);
+  // Truncating a small negative amount yields -0, which renders as "-R$ 0,00"
+  // and reads as false for a `< 0` check. Collapse both zeroes to one.
+  return cents === 0 ? 0 : cents / 100;
 }
 
 export function formatBRL(value) {
@@ -183,6 +185,10 @@ export function calculateRollover(input, options = {}) {
     monthlyRate,
     rows,
     maxSuccessfulMonths,
+    // Alias kept for the detailed-table heading. It is the same reconciled
+    // horizon, not an independent second opinion: since Milestone C there is
+    // one calculation, and the raw formula result on its own is wrong at the
+    // boundary. Do not present these two fields as corroborating each other.
     directFormulaMonths: maxSuccessfulMonths,
     finalDebt,
     remainingLimit: floorToCents(limit - finalDebt),

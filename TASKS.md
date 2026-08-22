@@ -4,12 +4,15 @@ The living checklist. Milestone definitions and the reasoning live in
 **[`ROADMAP.md`](ROADMAP.md)**; the current product description and reference
 case live in **[`README.md`](README.md)**.
 
-_Last reviewed: 2026-08-20_
+_Last reviewed: 2026-08-21_
 
-> Milestones **A–C** are shipped. The reference case passes, exact-limit
-> arithmetic is boundary-safe, the true horizon is independent of the 360-row
-> preview, and all detailed views label truncation. **D is next** and begins
-> with choosing whether this is a public web tool or a local/private utility.
+> Milestones **A–C** are shipped, with C independently re-verified on
+> 2026-08-21 (see [C4](#c4--re-verification-and-repair-2026-08-21)). The
+> reference case passes, exact-limit arithmetic is boundary-safe and now
+> matches an exact-rational oracle, the true horizon is independent of the
+> 360-row preview, and all detailed views label truncation. **D is next** and
+> begins with choosing whether this is a public web tool or a local/private
+> utility.
 
 ---
 
@@ -24,6 +27,9 @@ _Last reviewed: 2026-08-20_
 - [x] Return the maximum successful whole months, final displayed debt, and
       remaining limit.
 - [x] Keep the logarithmic formula as a cross-check beside the iterative model.
+      **Superseded by C:** the iterative model is gone and the formula is now
+      reconciled against full-precision projections inside one calculation. No
+      independent second count remains, and `directFormulaMonths` is an alias.
 - [x] Reproduce the supplied reference case: `R$ 1.000,00` debt,
       `R$ 1.500,00` limit, and `6%` monthly CET produce six successful months,
       `R$ 1.418,51` final debt, `R$ 81,49` remaining, and failure in month 7 at
@@ -96,6 +102,37 @@ Milestone D home decision rather than arithmetic risk.
 **C ships when:** a value exactly equal to the limit is treated consistently,
 long projections cannot masquerade as a shorter maximum, every displayed answer
 uses the documented money rule, and the reference case still passes.
+
+### C4 — Re-verification and repair, 2026-08-21
+
+C shipped correct arithmetic on top of an incomplete gate. The answers were
+right; the evidence that they were right did not cover the repair that made
+them right.
+
+- [x] Replay the model against an exact BigInt-rational oracle instead of
+      trusting the suite. 4,160 cases, no disagreement on month counts or
+      cent-truncated amounts; the 4,054-month horizon is exact.
+- [x] Mutation-test the C repairs. The boundary tolerance was already covered
+      (removing it fails 2 tests). **Removing both reconciliation loops left
+      the whole suite green** — the repair C exists for was untested.
+- [x] Prove the loops are load-bearing before pinning them: they change the
+      answer on user-typeable inputs, and in every checked case the shipped
+      answer matches exact arithmetic while the unreconciled one is off by one.
+- [x] Add a regression for each direction — `100 / 100,02 / 0,02%` must give 1
+      month (the formula alone floors to 0) and `5.000 / 23.954.704,78 /
+      21,24%` must give 43 (the formula alone rounds up to 44). Removing either
+      loop now fails the suite.
+- [x] Stop `floorToCents` returning `-0`, which rendered as `-R$ 0,00` and read
+      as false for a `< 0` check.
+- [x] Say "menos de R$ 0,01" instead of `R$ 0,00` when the overshoot is smaller
+      than a cent, so the failure message stops contradicting itself.
+- [x] Relabel the table heading: it showed "Fórmula direta", which is false at
+      exactly the boundary cases C was built to handle.
+- [ ] Decide whether a sub-cent overshoot should stay invisible in the table.
+      The row displays a debt equal to the limit with `R$ 0,00` remaining while
+      marked as failed (~0.008% of realistic inputs). Fixing it means changing
+      the money rule and breaking the supplied reference table — a D or E
+      decision, not a C repair.
 
 ---
 
@@ -180,3 +217,15 @@ small.
   when it is not rendered. Expanded unit tests and the static build pass. Chrome
   149 smoke tests passed all required scenarios at 320 × 800 and 1280 × 900
   without horizontal overflow or disagreement between result views.
+- **2026-08-21** — C re-verified independently, and the surprise was in the
+  gate, not the math. An exact BigInt-rational oracle agreed with the shipped
+  model on all 4,160 replayed cases, so C's answers are sound. But deleting
+  C's reconciliation loops — the repair C was opened for — left all 12 tests
+  passing, so the milestone's own acceptance evidence never touched it. The
+  loops are load-bearing: without them the count is off by one on inputs a user
+  can type, sometimes claiming a month of headroom that does not exist. Two
+  regressions now pin both directions; each loop's removal fails the suite.
+  Also fixed a `-0` leak in `floorToCents`, an overshoot message that read
+  "estoura o limite em R$ 0,00", and a table heading that claimed "Fórmula
+  direta" for a number the direct formula does not produce at the boundary.
+  Suite 12 → 16 tests, all passing, production build clean.

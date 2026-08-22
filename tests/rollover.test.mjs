@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   calculateRollover,
   DEFAULT_MAX_PREVIEW_ROWS,
+  floorToCents,
   formatBRL,
   INSUFFICIENT_LIMIT_MESSAGE,
   INVALID_INPUT_MESSAGE,
@@ -92,6 +93,56 @@ test('allows multiple rollovers when the last one lands exactly on the limit', (
   assert.equal(result.remainingLimit, 0);
   assert.equal(result.nextFailedMonth.month, 3);
   assert.equal(result.rows.at(-1).status, 'failed');
+});
+
+// The logarithmic formula alone is not accurate enough at the boundary: its
+// result can miss the correct integer by far more than the integer-snap
+// tolerance absorbs. The two cases below fail unless calculateWholeMonths keeps
+// reconciling its formula result against the adjacent full-precision
+// projections, so they guard that repair in both directions.
+
+test('recovers a whole month the logarithmic formula rounds away', () => {
+  // 100 x 1,0002 is exactly 100,02, so month 1 lands on the limit and succeeds.
+  // The raw formula returns 0.999999999999801 — off by 2e-13, about 56 times
+  // the integer tolerance — so it floors to 0 until the upward reconciliation
+  // restores the month that genuinely fits.
+  const result = calculateRollover({
+    debt: 100,
+    limit: 100.02,
+    monthlyCetPercent: 0.02,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.maxSuccessfulMonths, 1);
+  assert.equal(result.finalDebt, 100.02);
+  assert.equal(result.remainingLimit, 0);
+  assert.equal(result.nextFailedMonth.month, 2);
+  assert.equal(result.nextFailedMonth.displayDebt, 100.04);
+  assert.deepEqual(
+    result.rows.map((row) => [row.month, row.displayDebt, row.status]),
+    [
+      [1, 100.02, 'success'],
+      [2, 100.04, 'failed'],
+    ],
+  );
+});
+
+test('drops a whole month the logarithmic formula rounds up over a long horizon', () => {
+  // Month 44 exceeds the limit by a fraction of a cent, so 43 is the answer.
+  // The raw formula returns 44; only the downward reconciliation removes the
+  // month that does not actually fit.
+  const result = calculateRollover({
+    debt: 5000,
+    limit: 23954704.78,
+    monthlyCetPercent: 21.24,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.maxSuccessfulMonths, 43);
+  assert.equal(result.finalDebt, 19758087.08);
+  assert.equal(result.nextFailedMonth.month, 44);
+  assert.equal(result.nextFailedMonth.status, 'failed');
+  assert.equal(result.rows.at(-1).month, 44);
 });
 
 test('calculates the true result beyond the default row preview', () => {
@@ -220,4 +271,29 @@ test('includes a failure that falls on the configured final preview row', () => 
 
 test('formats BRL values for display', () => {
   assert.equal(formatBRL(1418.519112), 'R$ 1.418,51');
+});
+
+test('never produces a negative zero amount', () => {
+  // -0 renders as "-R$ 0,00" and reads as false for a `< 0` check.
+  assert.equal(Object.is(floorToCents(-0.001), -0), false);
+  assert.equal(Object.is(floorToCents(-0), -0), false);
+  assert.equal(formatBRL(-0.001).startsWith('-'), false);
+});
+
+test('keeps a sub-cent overshoot marked as failed', () => {
+  // Month 2 exceeds the limit by less than a cent. Truncating for display makes
+  // the row read as if it still fits, so the status is the only signal left: it
+  // must stay failed, and the remaining limit must not be a negative zero.
+  const result = calculateRollover({
+    debt: 100,
+    limit: 120.999,
+    monthlyCetPercent: 10,
+  });
+
+  assert.equal(result.maxSuccessfulMonths, 1);
+  assert.equal(result.nextFailedMonth.month, 2);
+  assert.equal(result.nextFailedMonth.status, 'failed');
+  assert.equal(result.nextFailedMonth.displayDebt, 121);
+  assert.equal(result.nextFailedMonth.remainingLimit, 0);
+  assert.equal(Object.is(result.nextFailedMonth.remainingLimit, -0), false);
 });

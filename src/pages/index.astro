@@ -191,7 +191,7 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
             <p class="eyebrow">Tabela</p>
             <h2>Projeção detalhada</h2>
           </div>
-          <p data-result="formula">Fórmula direta: {initial.directFormulaMonths} meses</p>
+          <p data-result="formula">Horizonte calculado: {initial.directFormulaMonths} meses</p>
         </div>
 
         <p class="preview-note" data-result="previewNotice" hidden></p>
@@ -408,11 +408,17 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
 
       setText(resultEls.failedMonth, `Mês ${failed.month}`);
       setText(resultEls.failedDebt, formatBRL(failed.displayDebt));
+
+      // The overshoot can be smaller than a cent, and truncating it to "R$ 0,00"
+      // would claim the month fits when it is exactly the month that fails.
+      const overshoot = Math.abs(failed.remainingLimit);
+      const overshootText = overshoot < 0.01 ? 'menos de R$ 0,01' : formatBRL(overshoot);
+
       setText(
         resultEls.insight,
         result.truncated
-          ? `Mês ${failed.month} estoura o limite em ${formatBRL(Math.abs(failed.remainingLimit))}. A prévia abaixo vai até o mês ${result.preview.shownThroughMonth}.`
-          : `Mês ${failed.month} estoura o limite em ${formatBRL(Math.abs(failed.remainingLimit))}.`
+          ? `Mês ${failed.month} estoura o limite em ${overshootText}. A prévia abaixo vai até o mês ${result.preview.shownThroughMonth}.`
+          : `Mês ${failed.month} estoura o limite em ${overshootText}.`
       );
     }
 
@@ -450,7 +456,7 @@ const chartWidth = (value: number) => `${Math.min(100, Math.max(4, (value / maxC
       setText(resultEls.months, String(result.maxSuccessfulMonths));
       setText(resultEls.finalDebt, formatBRL(result.finalDebt));
       setText(resultEls.remainingLimit, formatBRL(result.remainingLimit));
-      setText(resultEls.formula, `Fórmula direta: ${result.directFormulaMonths} meses`);
+      setText(resultEls.formula, `Horizonte calculado: ${result.directFormulaMonths} meses`);
       setText(resultEls.limit, formatBRL(input.limit));
       setText(resultEls.cet, formatPercent(input.monthlyCetPercent));
       renderInsight(result);

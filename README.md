@@ -40,6 +40,22 @@ npm run dev
 - When the first failed month falls beyond that preview, the cards still show
   the true maximum and true first failure, while both detailed views state the
   preview boundary. A 360-row preview is never presented as a 360-month maximum.
+- The logarithmic result is **not** an independent second opinion. On its own it
+  is wrong at the boundary in both directions, so it is always reconciled
+  against the adjacent full-precision projections before it is reported.
+  `directFormulaMonths` is an alias of `maxSuccessfulMonths`; the two cannot
+  disagree and must not be presented as corroborating each other.
+
+### Known limitation: sub-cent overshoot
+
+When a month exceeds the limit by less than a cent, truncating for display makes
+that row show a debt equal to the limit and `R$ 0,00` remaining while it is
+correctly marked as failed. The status is then the only signal that it did not
+fit, and the summary says the overshoot is "menos de R$ 0,01" rather than
+`R$ 0,00`. This affects roughly 0.008% of realistic inputs (24 of 300,000
+measured). Removing it means changing the money rule, which would break the
+supplied reference table, so it is left as a documented decision for a later
+increment rather than a silent repair.
 
 For example, debt `R$ 1.000,00`, limit `R$ 1.500,00`, and CET `0,01%`
 produce `4.054` successful months and failure in month `4.055`; the detailed
@@ -57,3 +73,14 @@ Milestone C was verified on 2026-08-20 with:
   insufficient-limit, invalid-input, and long-horizon scenarios;
 - responsive DOM and overflow checks at `320 × 800` and `1280 × 900`, including
   agreement among result cards, timeline, and table.
+
+Re-verified independently on 2026-08-21:
+
+- 4,160 cases replayed against an exact BigInt-rational model of the documented
+  rule, with no disagreement on month counts or cent-truncated amounts. The
+  4,054-month long-horizon answer is exact, not approximate.
+- Mutation-tested: removing the boundary tolerance fails the suite, and — after
+  this pass — so does removing either reconciliation loop. Before this pass,
+  deleting both loops left every test green, so the repair Milestone C exists
+  for was shipped untested. Two regressions now pin each direction.
+- 16 unit tests and a production build pass on Node 22.

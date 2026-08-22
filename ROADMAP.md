@@ -75,8 +75,14 @@ has a declared home. No enhancement belongs on the critical path.
 
 The calculation module accepts debt, limit, and monthly CET; rejects invalid
 starting conditions; compounds month by month; and returns the final successful
-state plus the next failed row. A logarithmic calculation provides a second view
-of the expected whole-month count.
+state plus the next failed row. A logarithmic calculation supplies the
+whole-month count.
+
+> **Superseded by C (2026-08-21).** A ships with the logarithmic count as a
+> second, independent view beside an iterative one. C replaced both with a
+> single reconciled calculation, so no independent cross-check survives. The
+> `directFormulaMonths` field is now an alias of `maxSuccessfulMonths` and the
+> two can never disagree; the interface no longer labels it a direct formula.
 
 The supplied scenario is the contract currently backed by evidence:
 
@@ -135,6 +141,29 @@ visible result view agrees. The unit suite and production build passed on
 2026-08-20. Chrome 149 smoke checks covered the reference, exact-boundary,
 insufficient-limit, invalid-input, and long-horizon cases at 320 × 800 and
 1280 × 900 with no horizontal overflow.
+
+**Independent re-verification, 2026-08-21.** The arithmetic holds: 4,160 cases
+were replayed against an exact BigInt-rational model of the documented rule,
+with no disagreement on either the month count or the cent-truncated amounts,
+and the 4,054-month long-horizon answer is exact rather than approximate.
+
+Two gaps in the evidence above were real and are now closed:
+
+- The reconciliation repair was **not covered by the suite that certified it**.
+  Deleting both loops left all 12 tests green, yet the loops change the answer
+  on inputs a user can type — and without them the count is wrong in both
+  directions, including reporting a month of headroom that does not exist. Two
+  regressions now pin each direction, and removing either loop fails the suite.
+- The `directFormulaMonths` assertions were tautologies: the field is an alias,
+  so they restated `maxSuccessfulMonths` rather than corroborating it.
+
+One limitation is now documented rather than fixed: when a month exceeds the
+limit by less than a cent, display truncation makes the failed row show a debt
+equal to the limit and `R$ 0,00` remaining. The status stays correct and the
+interface now says the overshoot is "menos de R$ 0,01" instead of `R$ 0,00`.
+Measured at roughly 0.008% of realistic inputs (24 of 300,000). Removing it
+entirely would mean changing the money rule, which would break the supplied
+reference table — a deliberate decision left to a future increment.
 
 ### D — Make the verified tool reachable in its intended context ⬜
 
