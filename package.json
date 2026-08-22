@@ -4,7 +4,11 @@
   "private": true,
   "type": "module",
   "description": "Astro page for calculating how long a debt rollover stays under an available credit limit.",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
+    "start": "astro dev --host 127.0.0.1 --port 4321",
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",

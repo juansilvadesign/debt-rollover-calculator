@@ -1,5 +1,4 @@
 import { defineConfig } from 'astro/config';
 
-export default defineConfig({
-  site: 'https://example.com',
-});
+// Intentionally no `site`: this is a local/private utility with no public URL.
+export default defineConfig({});
